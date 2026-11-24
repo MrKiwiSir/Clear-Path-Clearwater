@@ -20,7 +20,7 @@ https://mrkiwisir.github.io/Clear-Path-Clearwater/research.html
 | 🟥 Red shading | The owner of record is a Church of Scientology entity. |
 | 🟧 Orange shading | Owned by an LLC whose state filings name a person or company that news reporting identifies as a Scientology parishioner buyer. |
 | 🟨 Yellow shading *(hidden by default)* | An unverified lead: the owner shares only a mailing address or manager with a linked company. Turn these on in **Key & data**. They may be wrong. |
-| 🟣 Purple dot | An approved community note about a place. |
+| 🟣 Purple dot | A public comment about a place (unvetted; hide with 💬). |
 | 🟢 Green dot | A business whose building has **no ownership link found** in these sources. See the note below. |
 | 🟠 / 🔴 dot | A business whose landlord is in an orange or red group. |
 | ⚪ Gray dot | A business on an unverified (yellow) lead parcel. |
@@ -41,14 +41,15 @@ Green dots are **not hand-picked recommendations**. They are every business that
 
 ## Share what you know
 
-Clear Path improves when people who know downtown Clearwater add what they know.
+Anyone can add what they know about a building or business, and it shows up on the map **right away**.
 
-1. On the map, tap a property or business and choose **✍️ Add info**. The tip form opens with the address and location already filled in. You can also [post a tip directly](https://github.com/MrKiwiSir/Clear-Path-Clearwater/issues/new?template=ownership-tip.yml). You need a free GitHub account.
-2. Say what you know and **link a public source**: a Pinellas Property Appraiser record, a Sunbiz filing, a court record or a news article.
-3. Your tip is **public right away** on the [tips page](https://github.com/MrKiwiSir/Clear-Path-Clearwater/issues?q=label%3Atip), where anyone can read it and comment.
-4. A maintainer checks the source. Approved tips appear on the map as **community notes**, shown in property popups or as purple dots. Tips that can't be checked are labeled `needs-source` or `not-approved`.
+1. On the map, tap a property or business and choose **✍️ Add info**. A short form opens with the address and location already filled in. You can also [post a comment directly](https://github.com/MrKiwiSir/Clear-Path-Clearwater/issues/new?template=ownership-tip.yml). You need a free GitHub account.
+2. Say what you know. A source is optional, and word of mouth is welcome. Just say how you know.
+3. Your comment appears on the map immediately, inside that property's popup or as a **purple dot**, and on the [comments page](https://github.com/MrKiwiSir/Clear-Path-Clearwater/issues?q=is%3Aopen+label%3Atip), where anyone can read it and reply.
 
-**Ground rules:** tips are about **property and business ownership only**: who owns a building, which company runs a business, sales, openings and closings. Don't post anyone's personal beliefs, home address or other private details. Those tips are removed.
+Public comments are **unvetted**. Map users can hide them with the **💬 On/Off** button at the top of the map.
+
+Please leave out private details like home addresses and phone numbers. The maintainer removes spam or comments like that by adding the `hidden` label.
 
 ## Where the information comes from
 
@@ -64,7 +65,7 @@ The rules that decide what gets flagged are listed in plain text near the top of
 - This is an independent, unofficial project. It is not affiliated with the Tampa Bay Times, Pinellas County or anyone named in the data.
 - Every flag rests on public records and published reporting, and the sources are linked. Ownership changes, LLCs hide their real owners, and records can be wrong. **Check before relying on any single entry.**
 - Walking past a building costs nothing. The routing option is there for people who simply prefer not to.
-- Found an error? Tap **✍️ Add info** on the map, or [post a tip](https://github.com/MrKiwiSir/Clear-Path-Clearwater/issues/new?template=ownership-tip.yml) with the address and a source.
+- Found an error? Tap **✍️ Add info** on the map, or [post a comment](https://github.com/MrKiwiSir/Clear-Path-Clearwater/issues/new?template=ownership-tip.yml).
 
 ## Files
 
@@ -74,7 +75,7 @@ The rules that decide what gets flagged are listed in plain text near the top of
 | `research.html` | Research summary from November 2026: every flagged parcel, ownership groups and evidence |
 | `data/flagged_parcels_2026-11.csv` | Snapshot of flagged parcels (tier, group, owner of record, address, parcel ID, coordinates) |
 | `data/businesses_2026-11.csv` | Snapshot of OpenStreetMap businesses matched to their landlord's tier (ODbL) |
-| `.github/ISSUE_TEMPLATE/` | The public tip form |
+| `.github/ISSUE_TEMPLATE/` | The public comment form |
 
 The CSV files are a dated snapshot. The live map is always more current.
 

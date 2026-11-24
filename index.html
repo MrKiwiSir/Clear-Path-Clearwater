@@ -45,6 +45,7 @@ a{color:#1565c0}
   <span class="brand">Clear Path</span>
   <button class="btn" id="locBtn" title="Show my location">📍 Me</button>
   <button class="btn" id="scanBtn" title="Load businesses in the visible area">Scan area</button>
+  <button class="btn" id="tipBtn" title="Show or hide public comments">💬 On</button>
 </div>
 <div id="status">Loading…</div>
 <div id="sheet">
@@ -117,25 +118,30 @@ const parcelLayer=L.layerGroup().addTo(map), bizLayer=L.layerGroup().addTo(map),
 let PARCELS=[], BIZ=[], me=null, meMarker=null, routeFrom=null, routeTo=null;
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let NOTES=store.get('cp_notes',{});
-let TIPS=[]; // approved public tips from GitHub Issues
+let TIPS=[]; // public comments from GitHub Issues (live, unvetted)
+let SHOWTIPS=store.get('cp_showtips',true);
+window.toggleTips=v=>{SHOWTIPS=v;store.set('cp_showtips',v);if(v)tipLayer.addTo(map);else tipLayer.remove();const b=document.getElementById('tipBtn');if(b)b.textContent='💬 '+(v?'On':'Off');map.closePopup();renderPane()};
 const tipLayer=L.layerGroup();
 async function loadTips(){
   try{
-    const r=await fetch(`https://api.github.com/repos/${REPO}/issues?labels=approved&state=all&per_page=100`,{headers:{Accept:'application/vnd.github+json'}});
-    if(!r.ok)return;
-    const j=await r.json();
+    let j=[];
+    for(let page=1;page<=5;page++){
+      const r=await fetch(`https://api.github.com/repos/${REPO}/issues?labels=tip&state=open&per_page=100&page=${page}`,{headers:{Accept:'application/vnd.github+json'}});
+      if(!r.ok)break;const batch=await r.json();j=j.concat(batch);if(batch.length<100)break;
+    }
+    j=j.filter(i=>!i.pull_request&&!(i.labels||[]).some(l=>l.name==='hidden'));
     TIPS=j.map(i=>{const body=i.body||'';const sec=n=>((body.split('### '+n)[1]||'').split('###')[0]||'').trim();
       const loc=sec('Parcel ID or map location');const pid=(loc.match(/\b\d{18}\b/)||[])[0]||null;
       const ll=loc.match(/(-?\d{2}\.\d+)\s*,\s*(-?\d{2,3}\.\d+)/);
-      return {n:i.number,url:i.html_url,title:i.title.replace(/^\[Tip\]\s*/,''),place:sec('Building or business'),info:sec('What do you know?'),source:sec('Source'),pid,ll:ll?[+ll[1],+ll[2]]:null}});
+      return {n:i.number,url:i.html_url,title:i.title.replace(/^\[Tip\]\s*/,''),place:sec('Building or business'),info:sec('What do you know?'),source:sec('Source (optional)')||sec('Source'),pid,replies:i.comments||0,date:(i.created_at||'').slice(0,10),ll:ll?[+ll[1],+ll[2]]:null}});
     tipLayer.clearLayers();
     for(const t of TIPS){if(!t.ll||t.pid)continue;
       L.circleMarker(t.ll,{radius:8,color:'#fff',weight:2,fillColor:'#6a1b9a',fillOpacity:1}).bindPopup(tipHtml([t])).addTo(tipLayer)}
-    tipLayer.addTo(map);
+    if(SHOWTIPS)tipLayer.addTo(map);
   }catch(e){}
 }
-function tipsFor(pid,ll){return TIPS.filter(t=>(pid&&t.pid===pid)||(ll&&t.ll&&dist(ll,t.ll)<25))}
-function tipHtml(ts){if(!ts.length)return '';return `<div style="margin-top:6px;border-top:1px solid #e3e6e8;padding-top:6px"><b style="font-size:13px">Community notes (${ts.length})</b>${ts.map(t=>`<div class="small" style="margin-top:4px"><b>${esc(t.place||t.title)}</b>: ${esc(t.info.slice(0,220))}${t.info.length>220?'…':''} <a href="${t.url}" target="_blank" rel="noopener">#${t.n}</a></div>`).join('')}</div>`}
+function tipsFor(pid,ll){if(!SHOWTIPS)return [];return TIPS.filter(t=>(pid&&t.pid===pid)||(ll&&t.ll&&dist(ll,t.ll)<25))}
+function tipHtml(ts){if(!ts.length)return '';return `<div style="margin-top:6px;border-top:1px solid #e3e6e8;padding-top:6px"><b style="font-size:13px">Public comments (${ts.length})</b> <span class="small">unvetted</span>${ts.map(t=>`<div class="small" style="margin-top:4px"><b>${esc(t.place||t.title)}</b>: ${esc(t.info.slice(0,220))}${t.info.length>220?'…':''}${t.source&&t.source!=='_No response_'?' · source given':''} <span style="white-space:nowrap">· ${t.date}${t.replies?` · ${t.replies} repl${t.replies>1?'ies':'y'}`:''} · <a href="${t.url}" target="_blank" rel="noopener">read / reply</a></span></div>`).join('')}</div>`}
 let SHOWC=store.get('cp_showc',false); // unverified leads hidden by default
 window.toggleC=v=>{SHOWC=v;store.set('cp_showc',v);drawParcels();drawBiz();GRAPH=null};
 const say=t=>document.getElementById('status').textContent=t;
@@ -357,7 +363,7 @@ function renderPane(){
     <label class="small" style="display:block;margin:4px 0 8px"><input type="checkbox" ${SHOWC?'checked':''} onchange="toggleC(this.checked)"> Show unverified leads (yellow). These rest on a shared address or manager only and may be wrong.</label>
     <div class="warn"><b>Green dots are not recommendations.</b> They are every named business volunteers have added to OpenStreetMap in this area whose building has no ownership link in these sources. Many real storefronts are missing from OpenStreetMap, so the green set looks patchy. It is not proof of independence either. Your OK/avoid notes stay on this device only.</div>
     <p class="small">Ownership comes <b>live</b> from the Pinellas County Property Appraiser each time the app opens, so sales and ownership changes show up automatically. An LLC that starts using a known group's mailing address is flagged as "possible new member" in yellow.</p>
-    <div class="warn" style="background:#f3e5f5;border-color:#ce93d8"><b>Know something about a building?</b> Tap any property or business and choose <b>✍️ Add info</b>, or <a href="https://github.com/${REPO}/issues/new?template=ownership-tip.yml" target="_blank" rel="noopener">post a tip</a> (free GitHub account needed). Tips are public, and they show on the map as community notes (purple) after a maintainer checks the source. ${TIPS.length} approved so far · <a href="https://github.com/${REPO}/issues?q=label%3Atip" target="_blank" rel="noopener">see all tips</a></div>
+    <div class="warn" style="background:#f3e5f5;border-color:#ce93d8"><b>Public comments</b> (${TIPS.length}) <label class="small" style="float:right"><input type="checkbox" ${SHOWTIPS?'checked':''} onchange="toggleTips(this.checked)"> Show</label><br><span class="small">Posted by anyone and shown <b>immediately, without review</b>. They may be wrong. Purple dots and the "Public comments" part of popups.</span><br><span class="small">Know something? Tap a property or business and choose <b>✍️ Add info</b>, or <a href="https://github.com/${REPO}/issues/new?template=ownership-tip.yml" target="_blank" rel="noopener">post a comment</a> (free GitHub account needed) · <a href="https://github.com/${REPO}/issues?q=is%3Aopen+label%3Atip" target="_blank" rel="noopener">read all</a></span></div>
     <p class="small"><b>Groups and evidence</b></p>
     ${GROUPS.map(g=>`<div class="row" style="cursor:default"><span class="dot" style="background:${TIERC[g.tier]}"></span><div><b>${esc(g.name)}</b> <span class="small">(${PARCELS.filter(p=>p.group.name===g.name).length} parcels)</span><br><span class="small">${esc(g.ev)} ${srcLinks(g)}</span></div></div>`).join('')}
     <p class="small">Map © OpenStreetMap contributors (ODbL). Parcels © Pinellas County Property Appraiser — not a title search.</p>`;
@@ -371,6 +377,8 @@ map.on('moveend',()=>{if(TAB==='near'&&!me)renderPane()});
 /* ================= START ================= */
 (async()=>{
   renderPane();
+  document.getElementById('tipBtn').textContent='💬 '+(SHOWTIPS?'On':'Off');
+  document.getElementById('tipBtn').onclick=()=>toggleTips(!SHOWTIPS);
   loadTips();
   try{const n=await loadParcels();say(n+' flagged parcels loaded');}
   catch(e){say('Could not reach county records: '+e.message);}

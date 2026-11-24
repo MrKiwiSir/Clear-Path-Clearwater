@@ -1,14 +1,14 @@
-name: Ownership tip
-description: Share information about who owns or runs a building or business in downtown Clearwater.
+name: Comment on a building or business
+description: Share what you know about who owns or runs a building or business in downtown Clearwater. Appears on the map right away.
 title: "[Tip] "
 labels: ["tip"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping! Tips are **public**. A tip appears on the Clear Path map only after a maintainer checks the source and marks it **approved**.
+        Thanks for helping! Your comment is **public and appears on the Clear Path map right away**. Anyone can read it and reply.
 
-        **Please stick to property and business ownership**, meaning who owns the building, which company runs the business, and when a property sold. Do **not** post anyone's personal beliefs, home address, phone number or other private details. Tips like that will be removed.
+        Word of mouth is welcome. Just say how you know. Please keep it about buildings and businesses, and leave out private details like someone's home address or phone number.
   - type: input
     id: place
     attributes:
@@ -38,20 +38,18 @@ body:
     id: info
     attributes:
       label: What do you know?
-      description: Be specific. Which company owns or runs it, and how is it connected?
+      description: Who owns or runs it, how it's connected, what changed. Be as specific as you can.
     validations:
       required: true
   - type: textarea
     id: source
     attributes:
-      label: Source
-      description: A link to a public record (Pinellas Property Appraiser, Sunbiz, court record) or published news article. Tips without a checkable source can't be approved.
-    validations:
-      required: true
+      label: Source (optional)
+      description: How do you know? A link, a document, "the owner told me", "I worked there", or "heard it around town" are all fine.
   - type: checkboxes
     id: rules
     attributes:
       label: Confirm
       options:
-        - label: This is about property or business ownership, not anyone's personal life or beliefs.
+        - label: I left out private personal details (home addresses, phone numbers and the like).
           required: true
