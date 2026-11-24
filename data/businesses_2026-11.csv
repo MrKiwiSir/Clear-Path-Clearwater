@@ -1,0 +1,82 @@
+landlord_tier,business,type,address,parcel_owner_of_record,lat,lon
+B,Clearwater Tower (office building),office,33 N Garden Ave,CLEARWATER TOWER LLC,27.96664,-82.79836
+none,FedEx Office,shop,529 S Fort Harrison Ave,CLEARWATER TOWN CENTER LLC,27.96003,-82.79971
+none,Jimmy John's,fast food,553 S Fort Harrison Ave,CLEARWATER TOWN CENTER LLC,27.95973,-82.79972
+none,Chase,bank,511 S Ft Harrison Ave,CLEARWATER TOWN CENTER LLC,27.96025,-82.79972
+none,Prudential Tropical Realty,real estate,S Ft Harrison Ave,ROSEN HARBOR OAKS LLC,27.95921,-82.79972
+none,Regions Bank,bank,715 S Ft Harrison Ave,AMSOUTH BANK,27.95772,-82.7997
+none,Gatza Wellness Center,therapist,1000 S Ft Harrison Ave,RVP PROPERTIES CLW LLC,27.95511,-82.80018
+none,Clearwater Family Dental,dentist,215 S Myrtle Ave,"RODEGHERO, VIRGINIA M TRE",27.96314,-82.79556
+none,Tin Can Café,cafe,307 S Myrtle Ave,"LIKMETA, ALI",27.96247,-82.7958
+none,Soul Sicilian Fusion,restaurant,516 Cleveland St,CITY SQUARE LLC,27.96576,-82.79935
+none,Prelude Sports Bar,bar,528 Cleveland St,CITY SQUARE LLC,27.96574,-82.79901
+none,The Nash Keys Dueling Piano Bar,bar,500 block Cleveland St,CITY SQUARE LLC,27.96576,-82.79928
+C,Starbucks,cafe,433 Cleveland St,STUDIO EIGHT LLC,27.96548,-82.80015
+none,Downtown Pizza,restaurant,428 Cleveland St,MAINSTREET CLEARWATER DEV,27.96585,-82.80023
+none,Tequilas,restaurant,422 Cleveland St,MAINSTREET CLEARWATER DEV,27.9658,-82.80033
+none,Marlene Rose,gallery,416 Cleveland St,MAINSTREET CLEARWATER DEV,27.96576,-82.80061
+none,Bulletproof Athletics,gym,410 Cleveland St,MAINSTREET CLEARWATER DEV,27.96576,-82.80073
+B,Abbott Blackstone Co.,health food shop,411 Cleveland St,CBW MANAGEMENT LLC,27.96539,-82.80076
+B,Chiang Mai,restaurant,~415-425 Cleveland St,C B W MANAGEMENT LLC,27.96544,-82.80057
+B,High Point Realty,real estate,413 Cleveland St,CW DOWNTOWN PROPERTIES LLC,27.96545,-82.80067
+B,Daf & Dream,clothing,331 Cleveland St area,CW DOWNTOWN PROPERTIES LLC,27.96531,-82.80129
+B,One Stoppe Shoppe,general store,331 Cleveland St,CW DOWNTOWN PROPERTIES LLC,27.96515,-82.8013
+B,Leasing office (Station Square ground floor),office,331 Cleveland St,CW DOWNTOWN PROPERTIES LLC,27.96541,-82.8017
+B,Dependable Marketing Solutions,office,600 Cleveland St (One Clearwater Tower),CLEARWATER OFFICES LLC,27.96581,-82.79845
+B,Mama Bee Marketing,office,600 Cleveland St (One Clearwater Tower),CLEARWATER OFFICES LLC,27.96581,-82.79848
+B,Eagle Premier Realty,real estate,600 Cleveland St (One Clearwater Tower),CLEARWATER OFFICES LLC,27.96602,-82.79846
+B,TR Electric,electrician,600 Cleveland St Ste 269,CLEARWATER OFFICES LLC,27.96592,-82.79845
+B,bent bar gym,gym,701 Cleveland St,ZANO TEAM 4 LLC,27.96537,-82.79672
+B,Station Square Realty,real estate,34 N Garden Ave,515 HENDRICKS LLC,27.96671,-82.79893
+A,Restoration Café (OSM point sits on a church-owned parcel; CHECK on the ground),cafe,N Fort Harrison Ave area,CHURCH OF SCIENTOLOGY FLAG SVC ORG INC,27.96673,-82.80006
+A,The Fort Harrison Hotel,hotel,210 S Fort Harrison Ave,CHURCH OF SCIENTOLOGY FLAG SVC ORG INC,27.96363,-82.80018
+A,Sandcastle Religious Retreat,hotel,200 N Osceola Ave,CHURCH OF SCIENTOLOGY FLAG SVC ORG INC,27.96869,-82.80228
+A,The Yachtsman,motel,1024 Cleveland St,CHURCH OF SCIENTOLOGY FLAG SVC ORG INC,27.96615,-82.79213
+A,World Institute of Scientology Enterprises (WISE),office,121 N Fort Harrison Ave,CHURCH OF SCIENTOLOGY FLAG SERV ORG INC,27.96761,-82.79975
+none,Ultimate Medical Academy,school,1255 Cleveland St,CHRISTOFI & GIMBEL HOLDINGS LLC,27.96532,-82.78549
+none,SCS Cloud,office,1130 Cleveland St,1130 CLEVELAND LLC,27.96604,-82.79028
+none,A Very Important Pet,pet grooming,1200 block Cleveland St,CLEVELAND ST EAST LLC,27.96587,-82.78578
+none,Pro Shop Pub,pub,840 Cleveland St,"LUX, PATRICIA ANDERSON",27.96583,-82.79451
+none,Emily's Family Restaurant,restaurant,101 S Garden Ave,"LARES, PETER",27.96466,-82.79857
+none,Aussiefit Élite Training,gym,207 S Myrtle Ave,"RODEGHERO, VIRGINIA M TRE",27.9633,-82.79562
+none,Domino's,fast food,423 S Myrtle Ave,DOWNTOWN CROSSINGS LLC,27.96164,-82.79569
+none,Knee Deep Coffee Shop,cafe,S Fort Harrison Ave,CLEARWATER TOWN CENTER LLC,27.96,-82.79971
+none,Rebel / Speedway,fuel & convenience,441 Chestnut St,ANABI REAL ESTATE DEVELOPMENT LLC,27.96072,-82.80021
+none,Publix,supermarket,619 S Ft Harrison Ave,ROSEN HARBOR OAKS LLC,27.95928,-82.79908
+none,Wells Fargo,bank,S Ft Harrison Ave,WACHOVIA BANK NA,27.95855,-82.79964
+none,Hearing Care,clinic,820 S Ft Harrison Ave,VETRI VALLI KALYAN LLC,27.95649,-82.80014
+none,Erik's Fine Cigars & Smoke Shop,shop,714 S Ft Harrison Ave,"LOWREY, DAVID TRE",27.95742,-82.80012
+none,Walgreens,pharmacy,703 Court St,ALBA CAPITAL THREE LLC,27.96168,-82.79656
+none,Residence Inn Clearwater Downtown,hotel,940 Court St,940 COURT STREET CLEARWATER LLC,27.962,-82.79325
+none,Reliable Promotions,office,807 Court St,WE CARE FASHIONS INC,27.96164,-82.79513
+none,Laundry Hero,laundry,1107 Court St,ANA PROPERTY MANAGEMENT LLC,27.96052,-82.79128
+none,Roadrunner Food Store,convenience,Court St,ANA PROPERTY MANAGEMENT LLC,27.96048,-82.79148
+none,Sunshine Car Wash,car wash,1175 Court St,SUNSHINE ON COURT LLC,27.96035,-82.78907
+none,Enterprise,car rental,1200 Court St,NEWMAN PROPERTIES LLC,27.96115,-82.78729
+none,Florida Coastal Insurance Agency,insurance,1234 Court St,C W D W LLC,27.96107,-82.78564
+none,Honka Auto Repair,car repair,1266 Court St,HONKA AUTOMOTIVE SVC INC,27.96109,-82.78448
+none,Decks & Docks,trade supply,1281 Court St,D & D PARENT INC,27.96052,-82.78398
+none,Fran Haasch Law Group,lawyer,1221 Turner St,1221 TURNER LLC,27.95908,-82.78647
+none,McDonald's,fast food,539 S Missouri Ave,FRANCHISE RLTY INTERSTATE MCDONALDS,27.9598,-82.78712
+none,Straighten Up Orthodontics,dentist,501 S Missouri Ave,501 S M LLC,27.96055,-82.78731
+none,Papa John's,fast food,411 S Missouri Ave,T B H DEVELOPMENT LLC,27.96135,-82.78735
+none,Dunkin',fast food,600 S Missouri Ave,"MARKS, STEVEN H",27.95916,-82.78798
+none,Scott Paint,paint store,712 S Missouri Ave,MISSOURI 710 LLC,27.95778,-82.78793
+none,Yarbrough Electric,electrician,719 S Missouri Ave,"YARBROUGH, JOHN A",27.95743,-82.78725
+none,7-Eleven / Marco's Pizza,convenience & pizza,810 S Missouri Ave,NCT-202206 LLC,27.9569,-82.78809
+none,Wendy's,fast food,900 S Missouri Ave,OLE FOLKS PARTNERS,27.95626,-82.78815
+none,Visionworks,optician,912 S Missouri Ave,OLE FOLKS PARTNERS,27.95584,-82.78824
+none,Gotta Havit Insurance / Select Physical Therapy,office,918-922 S Missouri Ave,922 MISSOURI PROPERTIES LLC,27.95568,-82.78817
+none,Lots O' Suds,laundry,S Missouri Ave,"BAKRIWALA, JASHWANTLAL H",27.95602,-82.78724
+none,Seminole Subs and Gyros,fast food,S Missouri Ave,"PETALAS, JOHN TRE",27.95496,-82.78728
+none,Chevron,fuel,N Myrtle Ave,EMANUEL RETAILS LLC,27.96856,-82.7962
+none,2Shea Fishing and Diving Center,shop,198 Seminole St,CLEARWATER BAYSIDE MARINA LLC,27.97428,-82.80173
+none,Family Dollar,variety store,N Fort Harrison Ave,AE1 REALTY LLC,27.97762,-82.79636
+none,hep Thrift Store,thrift,1212 N Betty Ln,HOMELESS EMERGENCY PROJECT INC,27.97833,-82.78414
+none,A Choice Automotive,car repair,1408 N Betty Ln,LIDRACTON LLC,27.97968,-82.784
+none,Dean Roofing Company,roofer,506 N MLK Jr Ave,"WILLIAMS, A-B INC",27.97172,-82.79217
+none,The BayCare Sound,concert venue,Coachman Park,"CLEARWATER, CITY OF",27.96751,-82.80278
+none,Bilheimer Capitol Theatre,theatre,405 Cleveland St,"CLEARWATER, CITY OF",27.96535,-82.80095
+none,Francis Wilson Playhouse,theatre,302 Seminole St,"CLEARWATER, CITY OF",27.97403,-82.80068
+none,Clearwater Main Library,library,100 N Osceola Ave,"CLEARWATER, CITY OF",27.96756,-82.80153
+none,Clearwater Historical Society Museum,museum,S Fort Harrison Ave,PINELLAS BD OF PUB INST,27.95863,-82.80052

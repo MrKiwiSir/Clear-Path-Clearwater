@@ -1,0 +1,19 @@
+name: Set up tip labels
+on:
+  push:
+    paths: [".github/workflows/labels.yml"]
+  workflow_dispatch:
+permissions:
+  issues: write
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh label create tip         --repo "$REPO" --color "1d76db" --description "New ownership tip from the public" --force
+          gh label create approved    --repo "$REPO" --color "0e8a16" --description "Checked by a maintainer; shown on the map" --force
+          gh label create needs-source --repo "$REPO" --color "fbca04" --description "Needs a public record or article link" --force
+          gh label create not-approved --repo "$REPO" --color "b60205" --description "Could not be verified or off-topic" --force

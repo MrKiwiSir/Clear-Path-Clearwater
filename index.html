@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1b2a33">
+<title>Clear Path · Clearwater</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{--A:#c62828;--B:#ef7d22;--C:#d4b106;--N:#2e7d4f;--ink:#1b2a33;--bg:#fff;--mute:#5f6b72;--line:#e3e6e8}
+*{box-sizing:border-box}html,body{margin:0;height:100%;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink)}
+#map{position:absolute;inset:0 0 0 0}
+#top{position:absolute;z-index:1000;top:calc(env(safe-area-inset-top) + 8px);left:8px;right:8px;display:flex;gap:6px;align-items:center;pointer-events:none}
+#top>*{pointer-events:auto}
+.brand{background:var(--ink);color:#fff;border-radius:10px;padding:7px 11px;font-weight:700;font-size:14px;box-shadow:0 2px 8px #0003}
+.btn{background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 11px;font:inherit;font-size:14px;box-shadow:0 2px 8px #0002;cursor:pointer;color:var(--ink)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn:disabled{opacity:.5}
+#status{position:absolute;z-index:1000;top:calc(env(safe-area-inset-top) + 52px);left:8px;background:#fffd;border-radius:8px;padding:4px 9px;font-size:12px;color:var(--mute);box-shadow:0 1px 4px #0002}
+#sheet{position:absolute;z-index:1000;left:0;right:0;bottom:0;background:var(--bg);border-radius:16px 16px 0 0;box-shadow:0 -4px 18px #0003;max-height:46vh;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+#tabs{display:flex;border-bottom:1px solid var(--line)}
+#tabs button{flex:1;background:none;border:0;padding:11px 4px;font:inherit;font-weight:600;color:var(--mute);border-bottom:3px solid transparent;cursor:pointer}
+#tabs button.on{color:var(--ink);border-bottom-color:var(--ink)}
+#pane{overflow:auto;padding:10px 14px 14px}
+.row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.row:last-child{border-bottom:0}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;margin-top:4px}
+.small{font-size:12.5px;color:var(--mute)}
+.tag{display:inline-block;font-size:11px;font-weight:700;color:#fff;border-radius:9px;padding:1px 7px;margin-right:4px}
+select,input{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+.ctl{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.leaflet-popup-content{margin:10px 12px;font-size:13.5px;line-height:1.4}
+.leaflet-popup-content b{font-size:14px}
+.pbtns{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.pbtns button{font:inherit;font-size:12.5px;padding:4px 8px;border-radius:7px;border:1px solid var(--line);background:#f6f7f8;cursor:pointer}
+.legend span{display:inline-flex;align-items:center;gap:5px;margin:0 10px 6px 0;font-size:13px}
+.warn{background:#fff7e0;border:1px solid #f1d58a;border-radius:8px;padding:8px 10px;font-size:13px;margin:8px 0}
+a{color:#1565c0}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="top">
+  <span class="brand">Clear Path</span>
+  <button class="btn" id="locBtn" title="Show my location">📍 Me</button>
+  <button class="btn" id="scanBtn" title="Load businesses in the visible area">Scan area</button>
+</div>
+<div id="status">Loading…</div>
+<div id="sheet">
+  <div id="tabs">
+    <button data-t="near" class="on">Clean picks</button>
+    <button data-t="route">Route</button>
+    <button data-t="info">Key & data</button>
+  </div>
+  <div id="pane"></div>
+</div>
+
+<script>
+/* ================= DATA RULES =================
+   Ownership is pulled LIVE from the Pinellas County Property Appraiser parcel layer
+   and classified by the rules below. Edit GROUPS to add or change what gets flagged. */
+const PARCEL_URL="https://egis.pinellas.gov/gis/rest/services/Accela/AccelaAddressParcel/MapServer/2/query";
+const F="PGIS.PGIS.PAOGENERAL.";
+const OVERPASS=["https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
+// Offline fallback: businesses found during the Nov 2026 research (OpenStreetMap), used if no map-data server answers
+const FALLBACK_BIZ=[["Clearwater Tower (office building)", "office", "33 N Garden Ave", 27.96664, -82.79836], ["FedEx Office", "shop", "529 S Fort Harrison Ave", 27.96003, -82.79971], ["Jimmy John's", "fast food", "553 S Fort Harrison Ave", 27.95973, -82.79972], ["Chase", "bank", "511 S Ft Harrison Ave", 27.96025, -82.79972], ["Prudential Tropical Realty", "real estate", "S Ft Harrison Ave", 27.95921, -82.79972], ["Regions Bank", "bank", "715 S Ft Harrison Ave", 27.95772, -82.7997], ["Gatza Wellness Center", "therapist", "1000 S Ft Harrison Ave", 27.95511, -82.80018], ["Clearwater Family Dental", "dentist", "215 S Myrtle Ave", 27.96314, -82.79556], ["Tin Can Café", "cafe", "307 S Myrtle Ave", 27.96247, -82.7958], ["Soul Sicilian Fusion", "restaurant", "516 Cleveland St", 27.96576, -82.79935], ["Prelude Sports Bar", "bar", "528 Cleveland St", 27.96574, -82.79901], ["The Nash Keys Dueling Piano Bar", "bar", "500 block Cleveland St", 27.96576, -82.79928], ["Starbucks", "cafe", "433 Cleveland St", 27.96548, -82.80015], ["Downtown Pizza", "restaurant", "428 Cleveland St", 27.96585, -82.80023], ["Tequilas", "restaurant", "422 Cleveland St", 27.9658, -82.80033], ["Marlene Rose", "gallery", "416 Cleveland St", 27.96576, -82.80061], ["Bulletproof Athletics", "gym", "410 Cleveland St", 27.96576, -82.80073], ["Abbott Blackstone Co.", "health food shop", "411 Cleveland St", 27.96539, -82.80076], ["Chiang Mai", "restaurant", "~415-425 Cleveland St", 27.96544, -82.80057], ["High Point Realty", "real estate", "413 Cleveland St", 27.96545, -82.80067], ["Daf & Dream", "clothing", "331 Cleveland St area", 27.96531, -82.80129], ["One Stoppe Shoppe", "general store", "331 Cleveland St", 27.96515, -82.8013], ["Leasing office (Station Square ground floor)", "office", "331 Cleveland St", 27.96541, -82.8017], ["Dependable Marketing Solutions", "office", "600 Cleveland St (One Clearwater Tower)", 27.96581, -82.79845], ["Mama Bee Marketing", "office", "600 Cleveland St (One Clearwater Tower)", 27.96581, -82.79848], ["Eagle Premier Realty", "real estate", "600 Cleveland St (One Clearwater Tower)", 27.96602, -82.79846], ["TR Electric", "electrician", "600 Cleveland St Ste 269", 27.96592, -82.79845], ["bent bar gym", "gym", "701 Cleveland St", 27.96537, -82.79672], ["Station Square Realty", "real estate", "34 N Garden Ave", 27.96671, -82.79893], ["Restoration Café (OSM point sits on a church-owned parcel; CHECK on the ground)", "cafe", "N Fort Harrison Ave area", 27.96673, -82.80006], ["The Fort Harrison Hotel", "hotel", "210 S Fort Harrison Ave", 27.96363, -82.80018], ["Sandcastle Religious Retreat", "hotel", "200 N Osceola Ave", 27.96869, -82.80228], ["The Yachtsman", "motel", "1024 Cleveland St", 27.96615, -82.79213], ["World Institute of Scientology Enterprises (WISE)", "office", "121 N Fort Harrison Ave", 27.96761, -82.79975], ["Ultimate Medical Academy", "school", "1255 Cleveland St", 27.96532, -82.78549], ["SCS Cloud", "office", "1130 Cleveland St", 27.96604, -82.79028], ["A Very Important Pet", "pet grooming", "1200 block Cleveland St", 27.96587, -82.78578], ["Pro Shop Pub", "pub", "840 Cleveland St", 27.96583, -82.79451], ["Emily's Family Restaurant", "restaurant", "101 S Garden Ave", 27.96466, -82.79857], ["Aussiefit Élite Training", "gym", "207 S Myrtle Ave", 27.9633, -82.79562], ["Domino's", "fast food", "423 S Myrtle Ave", 27.96164, -82.79569], ["Knee Deep Coffee Shop", "cafe", "S Fort Harrison Ave", 27.96, -82.79971], ["Rebel / Speedway", "fuel & convenience", "441 Chestnut St", 27.96072, -82.80021], ["Publix", "supermarket", "619 S Ft Harrison Ave", 27.95928, -82.79908], ["Wells Fargo", "bank", "S Ft Harrison Ave", 27.95855, -82.79964], ["Hearing Care", "clinic", "820 S Ft Harrison Ave", 27.95649, -82.80014], ["Erik's Fine Cigars & Smoke Shop", "shop", "714 S Ft Harrison Ave", 27.95742, -82.80012], ["Walgreens", "pharmacy", "703 Court St", 27.96168, -82.79656], ["Residence Inn Clearwater Downtown", "hotel", "940 Court St", 27.962, -82.79325], ["Reliable Promotions", "office", "807 Court St", 27.96164, -82.79513], ["Laundry Hero", "laundry", "1107 Court St", 27.96052, -82.79128], ["Roadrunner Food Store", "convenience", "Court St", 27.96048, -82.79148], ["Sunshine Car Wash", "car wash", "1175 Court St", 27.96035, -82.78907], ["Enterprise", "car rental", "1200 Court St", 27.96115, -82.78729], ["Florida Coastal Insurance Agency", "insurance", "1234 Court St", 27.96107, -82.78564], ["Honka Auto Repair", "car repair", "1266 Court St", 27.96109, -82.78448], ["Decks & Docks", "trade supply", "1281 Court St", 27.96052, -82.78398], ["Fran Haasch Law Group", "lawyer", "1221 Turner St", 27.95908, -82.78647], ["McDonald's", "fast food", "539 S Missouri Ave", 27.9598, -82.78712], ["Straighten Up Orthodontics", "dentist", "501 S Missouri Ave", 27.96055, -82.78731], ["Papa John's", "fast food", "411 S Missouri Ave", 27.96135, -82.78735], ["Dunkin'", "fast food", "600 S Missouri Ave", 27.95916, -82.78798], ["Scott Paint", "paint store", "712 S Missouri Ave", 27.95778, -82.78793], ["Yarbrough Electric", "electrician", "719 S Missouri Ave", 27.95743, -82.78725], ["7-Eleven / Marco's Pizza", "convenience & pizza", "810 S Missouri Ave", 27.9569, -82.78809], ["Wendy's", "fast food", "900 S Missouri Ave", 27.95626, -82.78815], ["Visionworks", "optician", "912 S Missouri Ave", 27.95584, -82.78824], ["Gotta Havit Insurance / Select Physical Therapy", "office", "918-922 S Missouri Ave", 27.95568, -82.78817], ["Lots O' Suds", "laundry", "S Missouri Ave", 27.95602, -82.78724], ["Seminole Subs and Gyros", "fast food", "S Missouri Ave", 27.95496, -82.78728], ["Chevron", "fuel", "N Myrtle Ave", 27.96856, -82.7962], ["2Shea Fishing and Diving Center", "shop", "198 Seminole St", 27.97428, -82.80173], ["Family Dollar", "variety store", "N Fort Harrison Ave", 27.97762, -82.79636], ["hep Thrift Store", "thrift", "1212 N Betty Ln", 27.97833, -82.78414], ["A Choice Automotive", "car repair", "1408 N Betty Ln", 27.97968, -82.784], ["Dean Roofing Company", "roofer", "506 N MLK Jr Ave", 27.97172, -82.79217], ["The BayCare Sound", "concert venue", "Coachman Park", 27.96751, -82.80278], ["Bilheimer Capitol Theatre", "theatre", "405 Cleveland St", 27.96535, -82.80095], ["Francis Wilson Playhouse", "theatre", "302 Seminole St", 27.97403, -82.80068], ["Clearwater Main Library", "library", "100 N Osceola Ave", 27.96756, -82.80153], ["Clearwater Historical Society Museum", "museum", "S Fort Harrison Ave", 27.95863, -82.80052]];
+async function op(q){
+  let last;
+  for(const u of OVERPASS){
+    const c=new AbortController();const t=setTimeout(()=>c.abort(),25000);
+    try{const r=await fetch(u,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:c.signal});
+      clearTimeout(t);if(!r.ok){last=new Error('HTTP '+r.status);continue}return await r.json()}
+    catch(e){clearTimeout(t);last=e}
+  }
+  throw last||new Error('no map-data server answered');
+}
+const SRC={
+ pa:["Pinellas County Property Appraiser","https://www.pcpao.gov"],
+ tbt19:["Tampa Bay Times 2019","https://projects.tampabay.com/projects/2019/investigations/scientology-clearwater-real-estate/"],
+ tbt18:["Tampa Bay Times 2018","https://culteducation.com/group/1284-scientology/34507-prominent-scientologist-buys-up-16-million-worth-of-downtown-clearwater-property.html"],
+ tbt24:["Tampa Bay Times 2024","https://www.tampabay.com/news/clearwater/2024/04/04/58m-sale-extends-scientologists-control-downtown-clearwater/"],
+ tbt21:["Tampa Bay Times 2021","https://culteducation.com/group/1284-scientology/36238-scientology-members-fuel-another-land-buying-surge-in-clearwater.html"],
+ tbt20:["Tampa Bay Times 2020","https://culteducation.com/group/1284-scientology/35341-clearwater-businessmen-part-of-scientology-tied-downtown-purchases-seek-500-000-grant.html"],
+ tbt17:["Tampa Bay Times 2017","https://forum.exscn.net/threads/scientology-plans-control-of-downtown-clearwater-for-retail-makeover.43586/post-1135007"],
+ wusf26:["WUSF Sep 2026","https://www.wusf.org/politics-issues/2026-09-18/clearwater-approves-street-handovers-for-50-million-scientology-backed-entertainment-center"],
+ sunbiz:["Florida Sunbiz","https://search.sunbiz.org"]
+};
+const GROUPS=[
+ {name:"Church of Scientology",tier:"A",like:"SCIENTOLOGY",ev:"The county roll lists a Church of Scientology entity as owner of record.",src:["pa"]},
+ {name:"Agami group",tier:"B",owners:["C B W MANAGEMENT LLC","CBW MANAGEMENT LLC","LA VISTA GROUP LLC","CW DOWNTOWN PROPERTIES LLC","CLEARWATER OFFICES LLC","802 HOLDINGS LLC"],addrs:["400 CLEVELAND ST","PO BOX 4929"],ev:"Sunbiz lists Moises Agami (reported longtime parishioner) as manager of CBW Management and La Vista Group; the others share their mailing address.",src:["tbt18","tbt24","sunbiz"]},
+ {name:"North Marina group (Hayes / Palacio)",tier:"B",owners:["BLACK OBSIDIAN LLC","TEAL CREST PROPERTIES LLC","ROYAL PINES LLC","ROYAL PINES PROPERTIES LLC","OCEANIC PROPERTY HOLDINGS LLC","CAERULEUM DEVELOPMENT LLC","VISTA VENTURES GROUP LLC"],addrs:["421 SPRING VALLEY LN"],ev:"Shared Altamonte Springs mailing address and manager; Steven Hayes is registered agent. The Times reported LLCs run by parishioners Hayes and Norm Novitsky bought 45 North Marina properties.",src:["tbt21","sunbiz"]},
+ {name:"Zano group",tier:"B",owners:["ZANO TEAM LLC","ZANO TEAM 1 LLC","ZANO TEAM 2 LLC","ZANO TEAM 4 LLC","ZANO TEAM 5 LLC","TRUSTED GROUP LLC"],addrs:["PO BOX 4134","535 ROGERS ST"],ev:"The Times named Itzhak Zano's companies as buyers of 26 commercial properties; these LLCs share one manager and address.",src:["tbt19","sunbiz"]},
+ {name:"Cassano / Emrani",tier:"B",owners:["DOWNTOWN CLEARWATER DEVELOPMENT LLC","DOWNTOWN CLEARWATER DEV LLC","CLEVELAND ST DEVELOPMENT LLC","CREATIVE SUITES LLC","515 HENDRICKS LLC"],addrs:["34 N GARDEN AVE"],ev:"Sunbiz names Ray Cassano and/or Shahab Emrani; the Times described both as part of the 2017–19 parishioner buying wave.",src:["tbt20","sunbiz"]},
+ {name:"Novitsky",tier:"B",owners:["PALM BLUFF DEVELOPMENT GROUP LLC"],ev:"Sunbiz lists Norm Novitsky as member; the Times named him in the North Marina purchases.",src:["tbt21","sunbiz"]},
+ {name:"Ezra",tier:"B",owners:["EZRA DEVELOPMENT LLC","ED-2 LLC","ED 2 LLC"],addrs:["300 S MADISON AVE STE 2"],ev:"Sunbiz lists Tal Ezra as manager; the Times named Ezra as a buyer.",src:["tbt19","sunbiz"]},
+ {name:"Edmister",tier:"B",owners:["601 CLEVELAND STREET LLC"],ev:"Sunbiz lists Fred Edmister as manager (Atrium tower); the Times reported him as a 2017 buyer.",src:["tbt17","sunbiz"]},
+ {name:"Andrus",tier:"B",owners:["CLEARWATER TOWER LLC"],ev:"Sunbiz lists Brian Andrus as authorized member; the Times described him as a longtime Scientology member.",src:["tbt21","sunbiz"]},
+ {name:"Myrtle Development (EVO site)",tier:"B",owners:["MYRTLE DEVELOPMENT LLC"],ev:"Named in 2026 coverage as the church-tied developer of the EVO entertainment center.",src:["wusf26"]},
+ {name:"Probable: Myrtle Development manager",tier:"C",owners:["RITZ CLEARWATER LLC","714 CLEVELAND ST LLC"],ev:"Same Sunbiz manager and address as Myrtle Development LLC. Not separately reported — verify.",src:["sunbiz"]},
+ {name:"Probable: Kerr-linked",tier:"C",owners:["DREW MYRTLE LLC","24 N FORT HARRISON LLC","645 CLEVELAND LLC","GARDEN SUITES LLC","STUDIO EIGHT LLC"],addrs:["321 S MISSOURI AVE"],ev:"Sunbiz lists a David Kerr (a name the Times reported as a buyer — same person not confirmed), or the LLC shares his LLC's address. Verify.",src:["tbt19","sunbiz"]},
+ {name:"Probable: Zano-address land trusts",tier:"C",owners:["NORTH MYRTLE AVENUE LAND TRUST","WHITE BUILDING LAND TRUST","TRUSTEE COMPANY TRE"],ev:"Land trusts using the Zano group's PO box. Beneficiaries hidden — verify.",src:[]},
+ {name:"Probable: North Marina address",tier:"C",owners:["BLUE AQUA LLC"],ev:"County roll uses the North Marina group address but Sunbiz now lists different managers. Verify.",src:["sunbiz"]}
+];
+const REPO="MrKiwiSir/Clear-Path-Clearwater";
+function tipUrl(place,loc){const e=s=>encodeURIComponent(s).replace(/'/g,'%27');return `https://github.com/${REPO}/issues/new?template=ownership-tip.yml&title=${e('[Tip] '+place)}&place=${e(place)}&parcel=${e(loc)}`}
+const BBOX={s:27.935,w:-82.840,n:27.995,e:-82.770}; // Clearwater core + beach approach
+const TIERC={A:"#c62828",B:"#ef7d22",C:"#d4b106",N:"#2e7d4f",U:"#9e9e9e"};
+const TIERL={A:"Church-owned",B:"Reported link",C:"Probable — verify",N:"No link found"};
+const ENTITY=/\b(LLC|L L C|INC|CORP|LTD|LP|TRUST|TRE|COMPANY|CO)\b/;
+
+/* ================= STATE ================= */
+const map=L.map('map',{zoomControl:false}).setView([27.9655,-82.7985],16);
+L.control.zoom({position:'topright'}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors · Parcels: Pinellas County PA'}).addTo(map);
+const parcelLayer=L.layerGroup().addTo(map), bizLayer=L.layerGroup().addTo(map), routeLayer=L.layerGroup().addTo(map);
+let PARCELS=[], BIZ=[], me=null, meMarker=null, routeFrom=null, routeTo=null;
+const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let NOTES=store.get('cp_notes',{});
+let TIPS=[]; // approved public tips from GitHub Issues
+const tipLayer=L.layerGroup();
+async function loadTips(){
+  try{
+    const r=await fetch(`https://api.github.com/repos/${REPO}/issues?labels=approved&state=all&per_page=100`,{headers:{Accept:'application/vnd.github+json'}});
+    if(!r.ok)return;
+    const j=await r.json();
+    TIPS=j.map(i=>{const body=i.body||'';const sec=n=>((body.split('### '+n)[1]||'').split('###')[0]||'').trim();
+      const loc=sec('Parcel ID or map location');const pid=(loc.match(/\b\d{18}\b/)||[])[0]||null;
+      const ll=loc.match(/(-?\d{2}\.\d+)\s*,\s*(-?\d{2,3}\.\d+)/);
+      return {n:i.number,url:i.html_url,title:i.title.replace(/^\[Tip\]\s*/,''),place:sec('Building or business'),info:sec('What do you know?'),source:sec('Source'),pid,ll:ll?[+ll[1],+ll[2]]:null}});
+    tipLayer.clearLayers();
+    for(const t of TIPS){if(!t.ll||t.pid)continue;
+      L.circleMarker(t.ll,{radius:8,color:'#fff',weight:2,fillColor:'#6a1b9a',fillOpacity:1}).bindPopup(tipHtml([t])).addTo(tipLayer)}
+    tipLayer.addTo(map);
+  }catch(e){}
+}
+function tipsFor(pid,ll){return TIPS.filter(t=>(pid&&t.pid===pid)||(ll&&t.ll&&dist(ll,t.ll)<25))}
+function tipHtml(ts){if(!ts.length)return '';return `<div style="margin-top:6px;border-top:1px solid #e3e6e8;padding-top:6px"><b style="font-size:13px">Community notes (${ts.length})</b>${ts.map(t=>`<div class="small" style="margin-top:4px"><b>${esc(t.place||t.title)}</b>: ${esc(t.info.slice(0,220))}${t.info.length>220?'…':''} <a href="${t.url}" target="_blank" rel="noopener">#${t.n}</a></div>`).join('')}</div>`}
+let SHOWC=store.get('cp_showc',false); // unverified leads hidden by default
+window.toggleC=v=>{SHOWC=v;store.set('cp_showc',v);drawParcels();drawBiz();GRAPH=null};
+const say=t=>document.getElementById('status').textContent=t;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ================= PARCELS (live) ================= */
+function classify(owner,addr,homestead){
+  owner=(owner||'').trim(); addr=(addr||'').trim();
+  for(const g of GROUPS){
+    if(g.like && owner.includes(g.like)) return {g,how:'owner'};
+    if(g.owners && g.owners.includes(owner)) return {g,how:'owner'};
+  }
+  if(homestead==='Yes' || !ENTITY.test(owner) || /, /.test(owner)) return null; // never flag homes or named individuals by address alone
+  for(const g of GROUPS){
+    if(g.addrs && g.addrs.includes(addr)) return {g:{...g,tier:'C',name:'Possible new member of '+g.name,ev:'Not on the reviewed list, but uses the same owner mailing address as '+g.name+' ('+addr+'). Could be a new purchase — verify on Sunbiz.'},how:'address'};
+  }
+  return null;
+}
+async function loadParcels(){
+  say('Loading ownership records from the county…');
+  const names=[...new Set(GROUPS.flatMap(g=>g.owners||[]))].map(n=>`'${n.replace(/'/g,"''")}'`).join(',');
+  const addrs=[...new Set(GROUPS.flatMap(g=>g.addrs||[]))].map(n=>`'${n}'`).join(',');
+  const where=`${F}OWNER1 LIKE '%SCIENTOLOGY%' OR ${F}OWNER1 IN (${names}) OR ${F}OWNADD_1 IN (${addrs})`;
+  const out=[F+'OWNER1',F+'OWNADD_1',F+'SITE_NUM',F+'SITE_ST',F+'HOMESTEAD',F+'TAXABLE_VALUE','PGIS.PGIS.Parcels.PARCELID'].join(',');
+  let feats=[],off=0;
+  for(let i=0;i<10;i++){
+    const body=new URLSearchParams({where,geometry:`${BBOX.w},${BBOX.s},${BBOX.e},${BBOX.n}`,geometryType:'esriGeometryEnvelope',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:out,returnGeometry:'true',outSR:'4326',geometryPrecision:'6',resultOffset:off,resultRecordCount:1000,f:'json'});
+    const r=await fetch(PARCEL_URL,{method:'POST',body});
+    const j=await r.json(); if(j.error) throw new Error(j.error.message);
+    feats=feats.concat(j.features||[]); if(!j.exceededTransferLimit && (j.features||[]).length<1000) break; off+=1000;
+  }
+  PARCELS=[];
+  for(const f of feats){
+    const a={};for(const k in f.attributes)a[k.split('.').pop()]=f.attributes[k];
+    const c=classify(a.OWNER1,a.OWNADD_1,a.HOMESTEAD); if(!c) continue;
+    const rings=(f.geometry?.rings||[]).map(r=>r.map(([x,y])=>[y,x]));
+    PARCELS.push({...a,tier:c.g.tier,group:c.g,how:c.how,rings});
+  }
+  drawParcels(); return PARCELS.length;
+}
+function drawParcels(){
+  parcelLayer.clearLayers();
+  for(const p of PARCELS){
+    p.bounds=L.polygon(p.rings).getBounds();
+    if(p.tier==='C'&&!SHOWC)continue;
+    const poly=L.polygon(p.rings,{color:TIERC[p.tier],weight:1,fillOpacity:.38});
+    poly.bindPopup(()=>parcelPopup(p)); poly.addTo(parcelLayer); p.poly=poly; p.bounds=poly.getBounds();
+  }
+}
+function srcLinks(g){return (g.src||[]).map(k=>`<a href="${SRC[k][1]}" target="_blank" rel="noopener">${SRC[k][0]}</a>`).join(' · ')}
+function parcelPopup(p){
+  return `<span class="tag" style="background:${TIERC[p.tier]}">${p.tier}</span><b>${esc(p.OWNER1)}</b><br>
+  ${esc([p.SITE_NUM,p.SITE_ST].filter(Boolean).join(' '))||'(no site address)'}<br>
+  <span class="small">${esc(p.group.name)} — ${esc(p.group.ev)}</span><br>
+  <span class="small">${srcLinks(p.group)}${p.PARCELID?` · <a href="https://www.pcpao.gov/property-details?s=${esc(p.PARCELID)}" target="_blank" rel="noopener">Parcel record</a>`:''}</span>
+  ${tipHtml(tipsFor(p.PARCELID,null))}
+  <div class="pbtns"><button onclick="window.open('${tipUrl([p.SITE_NUM,p.SITE_ST].filter(Boolean).join(' ')||p.OWNER1, (p.PARCELID||'')+' ('+p.bounds.getCenter().lat.toFixed(5)+','+p.bounds.getCenter().lng.toFixed(5)+')')}','_blank')">✍️ Add info / correction</button></div>`;
+}
+
+/* ================= BUSINESSES (live, OSM) ================= */
+function pip(lat,lng,ring){let ins=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const [yi,xi]=ring[i],[yj,xj]=ring[j];if(((yi>lat)!=(yj>lat))&&(lng<(xj-xi)*(lat-yi)/(yj-yi)+xi))ins=!ins}return ins}
+function parcelAt(lat,lng){for(const p of PARCELS){if(!p.bounds||!p.bounds.contains([lat,lng]))continue;if(p.rings.some(r=>pip(lat,lng,r)))return p}return null}
+async function loadBiz(b){
+  say('Loading businesses from OpenStreetMap…');
+  const bb=`(${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()})`;
+  const k=['shop','amenity','office','craft','tourism','leisure','healthcare'];
+  const q=`[out:json][timeout:40];(${k.map(t=>`nwr["name"]["${t}"]${bb};`).join('')});out center tags;`;
+  let j;
+  try{j=await op(q)}catch(e){
+    if(BIZ.length)throw e;
+    j={elements:FALLBACK_BIZ.map(([n,k,a,lat,lon],i)=>({type:'f',id:i,lat,lon,tags:{name:n,shop:k.replace(/ /g,'_'),'addr:street':a}}))};
+    window._offline=true;
+  }
+  const skip=/^(amenity:(parking|bench|waste_basket|bicycle_parking|parking_entrance|toilets|drinking_water|post_box|vending_machine|charging_station|atm|shelter|fountain|place_of_worship|school|police|fire_station|courthouse|grave_yard)|tourism:(artwork|information|viewpoint)|leisure:(park|pitch|garden|playground|picnic_table|marina|slipway|track|nature_reserve))$/;
+  const seen=new Set(BIZ.map(x=>x.id));
+  for(const e of j.elements){
+    const t=e.tags,lat=e.lat??e.center?.lat,lng=e.lon??e.center?.lon; if(lat==null)continue;
+    const kind=k.map(x=>t[x]?x+':'+t[x]:null).find(Boolean)||'';
+    if(skip.test(kind)||seen.has(e.type+e.id))continue;
+    const p=parcelAt(lat,lng);
+    BIZ.push({id:e.type+e.id,name:t.name,kind:kind.split(':')[1].replace(/_/g,' '),cat:kind.split(':')[0],lat,lng,
+      addr:[t['addr:housenumber'],t['addr:street']].filter(Boolean).join(' '),tier:p?p.tier:'N',parcel:p});
+  }
+  drawBiz(); return BIZ.length;
+}
+function effTier(b){const n=NOTES[b.id];if(n==='avoid')return b.tier==='N'?'C':b.tier;if(b.tier==='C'&&!SHOWC)return 'U';return b.tier}
+function drawBiz(){
+  bizLayer.clearLayers();
+  for(const b of BIZ){
+    const t=effTier(b);const n=NOTES[b.id];
+    const m=L.circleMarker([b.lat,b.lng],{radius:7,color:'#fff',weight:2,fillColor:TIERC[t],fillOpacity:1});
+    m.bindPopup(()=>bizPopup(b)); m.addTo(bizLayer); b.m=m;
+    if(n==='ok') m.setStyle({color:'#1b5e20',weight:3});
+  }
+  renderPane();
+}
+function bizPopup(b){
+  const p=b.parcel,n=NOTES[b.id];
+  return `<b>${esc(b.name)}</b> <span class="small">${esc(b.kind)}</span><br>${esc(b.addr)}<br>
+  ${p&&p.tier==='C'&&!SHOWC?`<span class="tag" style="background:${TIERC.U}">?</span>Unverified ownership lead. Turn on <i>unverified leads</i> in Key &amp; data for details.`:p?`<span class="tag" style="background:${TIERC[p.tier]}">${p.tier}</span>Landlord: <b>${esc(p.OWNER1)}</b><br><span class="small">${esc(p.group.name)}</span>`:`<span class="tag" style="background:${TIERC.N}">✓</span>No ownership link found <span class="small">(not proof of independence)</span>`}
+  ${tipHtml(tipsFor(b.parcel?.PARCELID,[b.lat,b.lng]))}
+  ${n?`<br><span class="small">Your note: <b>${n==='ok'?'checked — OK':'avoid'}</b></span>`:''}
+  <div class="pbtns"><button onclick="routeToBiz('${b.id}')">🚶 Route here</button>
+  <button onclick="window.open('${tipUrl(b.name+(b.addr?', '+b.addr:''),(b.parcel&&b.parcel.PARCELID?b.parcel.PARCELID+' ':'')+'('+b.lat.toFixed(5)+','+b.lng.toFixed(5)+')')}','_blank')">✍️ Add info</button>
+  <button onclick="note('${b.id}','ok')">Mark OK</button><button onclick="note('${b.id}','avoid')">Mark avoid</button>${n?`<button onclick="note('${b.id}',null)">Clear note</button>`:''}</div>`;
+}
+window.note=(id,v)=>{if(v)NOTES[id]=v;else delete NOTES[id];store.set('cp_notes',NOTES);map.closePopup();drawBiz()};
+
+/* ================= LOCATION ================= */
+document.getElementById('locBtn').onclick=()=>{
+  if(!navigator.geolocation){say('Location not available on this device');return}
+  say('Finding you…');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    me=[pos.coords.latitude,pos.coords.longitude];
+    if(meMarker)meMarker.remove();
+    meMarker=L.circleMarker(me,{radius:8,color:'#fff',weight:3,fillColor:'#1565c0',fillOpacity:1}).addTo(map).bindPopup('You are here');
+    map.setView(me,17);say('Located');renderPane();
+  },e=>say('Could not get location: '+e.message),{enableHighAccuracy:true,timeout:15000});
+};
+document.getElementById('scanBtn').onclick=async()=>{
+  if(map.getZoom()<15){say('Zoom in closer to scan');return}
+  try{const n=await loadBiz(map.getBounds());say(n+' businesses loaded')}catch(e){say('Business scan failed: '+e.message)}
+};
+
+/* ================= ROUTING (client-side, avoids flagged frontage) ================= */
+const R=6371000,rad=Math.PI/180;
+function dist(a,b){const x=(b[1]-a[1])*rad*Math.cos((a[0]+b[0])/2*rad),y=(b[0]-a[0])*rad;return Math.hypot(x,y)*R}
+function segPtDist(p,a,b){ // meters, local equirectangular
+  const cx=Math.cos(p[0]*rad)*rad*R,cy=rad*R;
+  const ax=(a[1]-p[1])*cx,ay=(a[0]-p[0])*cy,bx=(b[1]-p[1])*cx,by=(b[0]-p[0])*cy;
+  const dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;let t=l2?-(ax*dx+ay*dy)/l2:0;t=Math.max(0,Math.min(1,t));
+  return Math.hypot(ax+t*dx,ay+t*dy);
+}
+function nearFlagged(pt,m=14){
+  for(const p of PARCELS){
+    const b=p.bounds;if(!b||(p.tier==='C'&&!SHOWC))continue;
+    if(pt[0]<b.getSouth()-.0002||pt[0]>b.getNorth()+.0002||pt[1]<b.getWest()-.0002||pt[1]>b.getEast()+.0002)continue;
+    for(const r of p.rings)for(let i=0;i<r.length;i++){if(segPtDist(pt,r[i],r[(i+1)%r.length])<m)return p}
+  }return null;
+}
+let GRAPH=null,GRAPHB=null;
+async function loadGraph(b){
+  say('Loading walkable streets…');
+  const bb=`(${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()})`;
+  const q=`[out:json][timeout:60];way["highway"]["highway"!~"motorway|motorway_link|trunk_link|construction|proposed|raceway|bus_guideway"]["foot"!="no"]["access"!~"private|no"]${bb};out geom;`;
+  const j=await op(q);
+  const nodes=new Map(),adj=new Map();
+  const add=(a,b,w,len,fl)=>{if(!adj.has(a))adj.set(a,[]);adj.get(a).push({to:b,len,fl})};
+  for(const w of j.elements){
+    if(!w.nodes||!w.geometry)continue;
+    for(let i=0;i<w.nodes.length;i++)nodes.set(w.nodes[i],[w.geometry[i].lat,w.geometry[i].lon]);
+    for(let i=1;i<w.nodes.length;i++){
+      const a=w.nodes[i-1],c=w.nodes[i],pa=nodes.get(a),pc=nodes.get(c);const len=dist(pa,pc);
+      const mid=[(pa[0]+pc[0])/2,(pa[1]+pc[1])/2];const fl=!!nearFlagged(mid);
+      add(a,c,0,len,fl);add(c,a,0,len,fl);
+    }
+  }
+  GRAPH={nodes,adj};GRAPHB=b;say('Streets ready');
+}
+function nearestNode(pt){let best=null,bd=1e9;for(const [id,p] of GRAPH.nodes){if(!GRAPH.adj.has(id))continue;const d=dist(pt,p);if(d<bd){bd=d;best=id}}return best}
+function dijkstra(s,t,penalty){
+  const D=new Map([[s,0]]),P=new Map(),done=new Set();const h=[[0,s]];
+  const push=(x)=>{h.push(x);let i=h.length-1;while(i>0){const p=(i-1)>>1;if(h[p][0]<=h[i][0])break;[h[p],h[i]]=[h[i],h[p]];i=p}};
+  const pop=()=>{const top=h[0],last=h.pop();if(h.length){h[0]=last;let i=0;for(;;){const l=2*i+1,r=l+1;let m=i;if(l<h.length&&h[l][0]<h[m][0])m=l;if(r<h.length&&h[r][0]<h[m][0])m=r;if(m===i)break;[h[m],h[i]]=[h[i],h[m]];i=m}}return top};
+  while(h.length){const [d,u]=pop();if(done.has(u))continue;done.add(u);if(u===t)break;
+    for(const e of GRAPH.adj.get(u)||[]){const nd=d+e.len*(e.fl?penalty:1);if(nd<(D.get(e.to)??Infinity)){D.set(e.to,nd);P.set(e.to,u);push([nd,e.to])}}}
+  if(!D.has(t))return null;const path=[t];while(path[0]!==s)path.unshift(P.get(path[0]));return path;
+}
+function pathStats(path){let len=0,fl=0;for(let i=1;i<path.length;i++){const e=GRAPH.adj.get(path[i-1]).find(x=>x.to===path[i]);len+=e.len;if(e.fl)fl+=e.len}return{len,fl}}
+async function runRoute(){
+  if(!routeFrom||!routeTo){renderPane();return}
+  const b=L.latLngBounds([routeFrom,routeTo]).pad(0.6);
+  try{
+    if(!GRAPH||!GRAPHB.contains(b))await loadGraph(b);
+    const s=nearestNode(routeFrom),t=nearestNode(routeTo);
+    const avoid=document.getElementById('avoidChk')?.checked??true;
+    const p=dijkstra(s,t,avoid?6:1),q=dijkstra(s,t,1);
+    routeLayer.clearLayers();
+    if(!p){say('No walking route found');return}
+    const sp=pathStats(p),sq=pathStats(q);
+    if(avoid&&q&&sq.len<sp.len-20)L.polyline(q.map(n=>GRAPH.nodes.get(n)),{color:'#777',weight:4,dashArray:'6 8',opacity:.7}).addTo(routeLayer).bindPopup(`Shortest: ${Math.round(sq.len)} m, ${Math.round(sq.fl)} m past flagged property`);
+    L.polyline(p.map(n=>GRAPH.nodes.get(n)),{color:'#1565c0',weight:6,opacity:.85}).addTo(routeLayer);
+    L.circleMarker(routeFrom,{radius:7,color:'#fff',weight:2,fillColor:'#1565c0',fillOpacity:1}).addTo(routeLayer);
+    L.circleMarker(routeTo,{radius:7,color:'#fff',weight:2,fillColor:'#111',fillOpacity:1}).addTo(routeLayer);
+    window._rs={sp,sq,avoid};say('Route ready');renderPane();
+  }catch(e){say('Routing unavailable right now ('+e.message+') — street data servers did not answer. Try again in a minute.')}
+}
+window.routeToBiz=id=>{const b=BIZ.find(x=>x.id===id);routeTo=[b.lat,b.lng];routeTo.label=b.name;if(!routeFrom&&me){routeFrom=me.slice();routeFrom.label='My location'}map.closePopup();setTab('route');runRoute()};
+let pickMode=null;
+map.on('click',e=>{if(!pickMode)return;const pt=[e.latlng.lat,e.latlng.lng];pt.label='Map point';if(pickMode==='from')routeFrom=pt;else routeTo=pt;pickMode=null;runRoute();renderPane()});
+
+/* ================= PANES ================= */
+let TAB='near';
+function setTab(t){TAB=t;document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));renderPane()}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
+function renderPane(){
+  const el=document.getElementById('pane');
+  if(TAB==='near'){
+    const center=me||[map.getCenter().lat,map.getCenter().lng];
+    const cats=[...new Set(BIZ.map(b=>b.kind))].sort();
+    const cat=window._cat||'';const show=window._show||'clean';
+    let list=BIZ.filter(b=>(!cat||b.kind===cat)&&(show==='all'||(show==='clean'?effTier(b)==='N':effTier(b)!=='N')));
+    list=list.map(b=>({b,d:dist(center,[b.lat,b.lng])})).sort((x,y)=>x.d-y.d).slice(0,60);
+    el.innerHTML=`<div class="ctl"><select onchange="window._show=this.value;renderPane()"><option value="clean"${show==='clean'?' selected':''}>No link found</option><option value="flag"${show==='flag'?' selected':''}>Flagged landlord</option><option value="all"${show==='all'?' selected':''}>All</option></select>
+    <select onchange="window._cat=this.value;renderPane()"><option value="">Any type</option>${cats.map(c=>`<option${c===cat?' selected':''}>${esc(c)}</option>`).join('')}</select>
+    <span class="small">${me?'Nearest to you':'Nearest to map center'}</span></div>
+    ${BIZ.length?'':'<div class="small">No businesses loaded yet — tap <b>Scan area</b>.</div>'}
+    ${list.map(({b,d})=>`<div class="row" onclick="focusBiz('${b.id}')"><span class="dot" style="background:${TIERC[effTier(b)]}"></span><div><b>${esc(b.name)}</b> <span class="small">${esc(b.kind)}</span><br><span class="small">${Math.round(d)} m · ${esc(b.addr||'')}${b.parcel?' · landlord '+esc(b.parcel.OWNER1):''}${NOTES[b.id]?' · your note: '+NOTES[b.id]:''}</span></div></div>`).join('')}`;
+  } else if(TAB==='route'){
+    const rs=window._rs;
+    el.innerHTML=`<div class="ctl"><button class="btn" onclick="useMe()">From: ${routeFrom?esc(routeFrom.label||'set'):'my location'}</button><button class="btn" onclick="pickMode='from';say('Tap the map for the start')">Pick start</button></div>
+    <div class="ctl"><button class="btn" onclick="pickMode='to';say('Tap the map for the destination')">To: ${routeTo?esc(routeTo.label||'set'):'tap to pick'}</button>
+    <label class="small"><input type="checkbox" id="avoidChk" ${!rs||rs.avoid?'checked':''} onchange="runRoute()"> Avoid walking past flagged property</label></div>
+    ${rs?`<div class="row" style="cursor:default"><span class="dot" style="background:#1565c0"></span><div><b>${Math.round(rs.sp.len)} m</b> · about ${Math.max(1,Math.round(rs.sp.len/80))} min walk (at ~80 m/min)<br><span class="small">${Math.round(rs.sp.fl)} m alongside flagged parcels${rs.avoid&&rs.sq.len<rs.sp.len-20?` · shortest route (dashed) is ${Math.round(rs.sq.len)} m with ${Math.round(rs.sq.fl)} m alongside flagged parcels`:''}</span></div></div>`:'<div class="small">Pick a start and destination, or tap a business and choose <b>Route here</b>. Walking past a building costs nothing — this option is for when you would rather not.</div>'}
+    <button class="btn" onclick="routeFrom=routeTo=null;window._rs=null;routeLayer.clearLayers();renderPane()">Clear route</button>`;
+  } else {
+    const cnt=t=>PARCELS.filter(p=>p.tier===t).length;
+    el.innerHTML=`<div class="legend"><span><span class="dot" style="background:${TIERC.A}"></span>A Church-owned (${cnt('A')})</span><span><span class="dot" style="background:${TIERC.B}"></span>B Reported link (${cnt('B')})</span><span><span class="dot" style="background:${TIERC.C}"></span>C Probable — verify (${cnt('C')})</span><span><span class="dot" style="background:${TIERC.N}"></span>No link found</span><span><span class="dot" style="background:${TIERC.U}"></span>Unverified lead (hidden)</span></div>
+    <label class="small" style="display:block;margin:4px 0 8px"><input type="checkbox" ${SHOWC?'checked':''} onchange="toggleC(this.checked)"> Show unverified leads (yellow). These rest on a shared address or manager only and may be wrong.</label>
+    <div class="warn"><b>Green dots are not recommendations.</b> They are every named business volunteers have added to OpenStreetMap in this area whose building has no ownership link in these sources. Many real storefronts are missing from OpenStreetMap, so the green set looks patchy. It is not proof of independence either. Your OK/avoid notes stay on this device only.</div>
+    <p class="small">Ownership comes <b>live</b> from the Pinellas County Property Appraiser each time the app opens, so sales and ownership changes show up automatically. An LLC that starts using a known group's mailing address is flagged as "possible new member" in yellow.</p>
+    <div class="warn" style="background:#f3e5f5;border-color:#ce93d8"><b>Know something about a building?</b> Tap any property or business and choose <b>✍️ Add info</b>, or <a href="https://github.com/${REPO}/issues/new?template=ownership-tip.yml" target="_blank" rel="noopener">post a tip</a> (free GitHub account needed). Tips are public, and they show on the map as community notes (purple) after a maintainer checks the source. ${TIPS.length} approved so far · <a href="https://github.com/${REPO}/issues?q=label%3Atip" target="_blank" rel="noopener">see all tips</a></div>
+    <p class="small"><b>Groups and evidence</b></p>
+    ${GROUPS.map(g=>`<div class="row" style="cursor:default"><span class="dot" style="background:${TIERC[g.tier]}"></span><div><b>${esc(g.name)}</b> <span class="small">(${PARCELS.filter(p=>p.group.name===g.name).length} parcels)</span><br><span class="small">${esc(g.ev)} ${srcLinks(g)}</span></div></div>`).join('')}
+    <p class="small">Map © OpenStreetMap contributors (ODbL). Parcels © Pinellas County Property Appraiser — not a title search.</p>`;
+  }
+}
+window.renderPane=renderPane;window.runRoute=runRoute;
+window.useMe=()=>{if(!me){document.getElementById('locBtn').click();return}routeFrom=me.slice();routeFrom.label='My location';runRoute();renderPane()};
+window.focusBiz=id=>{const b=BIZ.find(x=>x.id===id);map.setView([b.lat,b.lng],18,{animate:false});map.panBy([0,Math.round(document.getElementById('sheet').offsetHeight/2)],{animate:false});b.m.openPopup()};
+map.on('moveend',()=>{if(TAB==='near'&&!me)renderPane()});
+
+/* ================= START ================= */
+(async()=>{
+  renderPane();
+  loadTips();
+  try{const n=await loadParcels();say(n+' flagged parcels loaded');}
+  catch(e){say('Could not reach county records: '+e.message);}
+  try{const n=await loadBiz(L.latLngBounds([27.954,-82.808],[27.982,-82.784]));say(PARCELS.length+' flagged parcels · '+n+' businesses'+(window._offline?' (offline business list)':''));}
+  catch(e){say('Business data unavailable: '+e.message);}
+})();
+</script>
+</body>
+</html>

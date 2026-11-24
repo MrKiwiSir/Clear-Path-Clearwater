@@ -1,0 +1,57 @@
+name: Ownership tip
+description: Share information about who owns or runs a building or business in downtown Clearwater.
+title: "[Tip] "
+labels: ["tip"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping! Tips are **public**. A tip appears on the Clear Path map only after a maintainer checks the source and marks it **approved**.
+
+        **Please stick to property and business ownership**, meaning who owns the building, which company runs the business, and when a property sold. Do **not** post anyone's personal beliefs, home address, phone number or other private details. Tips like that will be removed.
+  - type: input
+    id: place
+    attributes:
+      label: Building or business
+      description: Name and street address
+      placeholder: "e.g. Example Cafe, 500 Cleveland St"
+    validations:
+      required: true
+  - type: input
+    id: parcel
+    attributes:
+      label: Parcel ID or map location
+      description: Filled in automatically if you came from the map. Otherwise leave blank or paste the Pinellas parcel ID.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of tip is this?
+      options:
+        - Ownership link the map is missing
+        - The map's information is wrong or outdated
+        - Property was sold / owner changed
+        - Business opened, closed or moved
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: info
+    attributes:
+      label: What do you know?
+      description: Be specific. Which company owns or runs it, and how is it connected?
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Source
+      description: A link to a public record (Pinellas Property Appraiser, Sunbiz, court record) or published news article. Tips without a checkable source can't be approved.
+    validations:
+      required: true
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Confirm
+      options:
+        - label: This is about property or business ownership, not anyone's personal life or beliefs.
+          required: true
